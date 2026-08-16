@@ -1,0 +1,15 @@
+.DS_Store
+**/.DS_Store
+build/
+*.elf
+*.bin
+*.hex
+*.map
+*.eep
+*.o
+*.a
+
+# Never commit private SSH material
+*.pem
+*_deploy
+*_deploy.pub
