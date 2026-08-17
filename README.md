@@ -6,7 +6,10 @@
 
 ## 文件
 
-- `SE0398NZ07A0_NodeMCU_Test/SE0398NZ07A0_NodeMCU_Test.ino`：Arduino 测试程序。
+- `SE0398NZ07A0_NodeMCU_Test/SE0398NZ07A0_NodeMCU_Test.ino`：Arduino 测试程序，自动显示真实四色照片。
+- `SE0398NZ07A0_NodeMCU_Test/sunset_image.h`：达马万德山图片的 768×552、2-bit 四色数据。
+- `SE0398NZ07A0_NodeMCU_Test/marilyn_image.h`：梦露图片的 768×552、2-bit 四色数据。
+- `tools/generate_epd_image.swift`：图片裁剪、四色量化和 2-bit 打包工具。
 
 ## 适用开发板
 
@@ -68,22 +71,29 @@ Upload Speed：115200
 1. 先只用 USB 连接 NodeMCU，不接屏幕，烧录 `.ino`。
 2. 断开 USB，按照接线表焊接；GND 最先接，3.3V 最后接。
 3. 检查所有相邻焊盘无短路，再连接 USB。
-4. 程序上电等待 3 秒后自动执行一次四色测试，不需要发送任何串口命令。
+4. 程序上电等待 3 秒后显示达马万德山图片；按 NodeMCU 板上的 `FLASH` 按键切换到梦露图片，再按一次切回。不按键时画面保持不变。
 5. 串口监视器是可选的；使用时设置为 `115200 baud`，可以查看 BUSY、写入进度和错误原因。
 6. 刷新时 BUSY 会变为 LOW，四色全刷可能持续数十秒。不要在刷新期间断电。
-7. 完成后程序关闭墨水屏高压并进入空闲状态，不会循环刷新。重新上电或按 NodeMCU 的 `RST` 才会再次测试。
+7. 每次切换图片都会关闭墨水屏高压并完整刷新；刷新完成后保持当前画面，不会自动切换。
 
-预期测试图：
+`FLASH` 按键对应 `D3/GPIO0`，按键为低电平有效。不要在复位或烧录时按住该键，否则 ESP8266 会进入下载模式。
+
+预期画面一：从 Wikimedia Commons 获取并量化的伊朗达马万德山日落照片。原图作者 Mahdi Kalhor，采用 CC BY 3.0：
 
 ```text
-+-------------------+-------------------+
-| BLACK             | WHITE             |
-|   white marker    |                   |
-+-------------------+-------------------+
-| YELLOW            | RED               |
-|                   |      black marker |
-+-------------------+-------------------+
+       RED sunset clouds
+     YELLOW mountain light
+       BLACK Damavand ridge
+          WHITE sky/water
 ```
+
+原图页面：<https://commons.wikimedia.org/wiki/File:%D8%A2%D8%AA%D8%B4%D9%81%D8%B4%D8%A7%D9%86_%D8%AF%D9%85%D8%A7%D9%88%D9%86%D8%AF_%D8%AF%D8%B1_%D8%A2%D8%AA%D8%B4_%D8%BA%D8%B1%D9%88%D8%A8%D8%8C_%D8%AA%D9%82%D8%AF%DB%8C%D9%85_%D8%A8%D9%87_%D8%A7%DB%8C%D8%B1%D8%A7%D9%86%DB%8C%D8%A7%D9%86_Damavand_or_Diamond,_to_dear_Iranian,_Polur,_Mazandaran,_Iran_-_panoramio.jpg>
+
+预期画面二：Wikimedia Commons 上的《Marilyn Monroe I》绘画，作者 Silvia Klippert（照片 John Klippert），采用 CC BY-SA 3.0。它不是直接复制 Andy Warhol 原版丝网印刷，而是将可合法再利用的梦露绘画转换为黑、白、黄、红四色波普风格：
+
+原图页面：<https://commons.wikimedia.org/wiki/File:Marilyn_Monroe_I.jpg>
+
+原图下载地址和许可信息以页面为准。两张图各自每像素 2 bit，合计约 207 KiB；编译后的固件仍在 NodeMCU 1MB Flash 范围内。
 
 如果图案整体精确旋转了 180 度，把程序中的：
 

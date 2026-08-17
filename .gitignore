@@ -8,6 +8,8 @@ build/
 *.eep
 *.o
 *.a
+tools/source_sunset.jpg
+tools/source_marilyn.jpg
 
 # Never commit private SSH material
 *.pem
