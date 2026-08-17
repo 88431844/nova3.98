@@ -87,9 +87,13 @@ Upload Speed：115200
           WHITE sky/water
 ```
 
+![Damavand sunset original](https://upload.wikimedia.org/wikipedia/commons/thumb/1/16/%D8%A2%D8%AA%D8%B4%D9%81%D8%B4%D8%A7%D9%86_%D8%AF%D9%85%D8%A7%D9%88%D9%86%D8%AF_%D8%AF%D8%B1_%D8%A2%D8%AA%D8%B4_%D8%BA%D8%B1%D9%88%D8%A8%D8%8C_%D8%AA%D9%82%D8%AF%DB%8C%D9%85_%D8%A8%D9%87_%D8%A7%DB%8C%D8%B1%D8%A7%D9%86%DB%8C%D8%A7%D9%86_Damavand_or_Diamond%2C_to_dear_Iranian%2C_Polur%2C_Mazandaran%2C_Iran_-_panoramio.jpg/1280px-thumbnail.jpg)
+
 原图页面：<https://commons.wikimedia.org/wiki/File:%D8%A2%D8%AA%D8%B4%D9%81%D8%B4%D8%A7%D9%86_%D8%AF%D9%85%D8%A7%D9%88%D9%86%D8%AF_%D8%AF%D8%B1_%D8%A2%D8%AA%D8%B4_%D8%BA%D8%B1%D9%88%D8%A8%D8%8C_%D8%AA%D9%82%D8%AF%DB%8C%D9%85_%D8%A8%D9%87_%D8%A7%DB%8C%D8%B1%D8%A7%D9%86%DB%8C%D8%A7%D9%86_Damavand_or_Diamond,_to_dear_Iranian,_Polur,_Mazandaran,_Iran_-_panoramio.jpg>
 
 预期画面二：Wikimedia Commons 上的《Marilyn Monroe I》绘画，作者 Silvia Klippert（照片 John Klippert），采用 CC BY-SA 3.0。它不是直接复制 Andy Warhol 原版丝网印刷，而是将可合法再利用的梦露绘画转换为黑、白、黄、红四色波普风格：
+
+![Marilyn Monroe I original](https://upload.wikimedia.org/wikipedia/commons/0/09/Marilyn_Monroe_I.jpg)
 
 原图页面：<https://commons.wikimedia.org/wiki/File:Marilyn_Monroe_I.jpg>
 
