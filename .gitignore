@@ -10,6 +10,7 @@ build/
 *.a
 tools/source_sunset.jpg
 tools/source_marilyn.jpg
+secrets.h
 
 # Never commit private SSH material
 *.pem

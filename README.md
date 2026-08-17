@@ -9,6 +9,8 @@
 - `SE0398NZ07A0_NodeMCU_Test/SE0398NZ07A0_NodeMCU_Test.ino`：Arduino 测试程序，自动显示真实四色照片。
 - `SE0398NZ07A0_NodeMCU_Test/sunset_image.h`：达马万德山图片的 768×552、2-bit 四色数据。
 - `SE0398NZ07A0_NodeMCU_Test/marilyn_image.h`：梦露图片的 768×552、2-bit 四色数据。
+- `SE0398NZ07A0_Shenzhen_Weather/SE0398NZ07A0_Shenzhen_Weather.ino`：深圳三日天气看板，直接访问 Open-Meteo。
+- `SE0398NZ07A0_Shenzhen_Weather/secrets.example.h`：Wi-Fi 配置模板；本地复制为 `secrets.h`，不要提交真实密码。
 - `tools/generate_epd_image.swift`：图片裁剪、四色量化和 2-bit 打包工具。
 
 ## 适用开发板
@@ -118,3 +120,7 @@ constexpr bool kRotateImage180 = false;
 | 图案正好上下颠倒且左右也反向 | 打开 `kRotateImage180` |
 
 程序使用 1MHz SPI、逐字节 CS、刷新阶段 180 秒 BUSY 超时和 A0 特有的行映射：前 276 个逻辑行写入物理偶数行，后 276 个逻辑行反向写入物理奇数行。
+
+### 深圳天气固件
+
+天气 sketch 使用深圳坐标（22.5431, 114.0579）访问 Open-Meteo，显示当前天气和未来三天预报。ESP8266 只支持 2.4GHz Wi-Fi。烧录前在该 sketch 目录复制 `secrets.example.h` 为 `secrets.h` 并填写本地 Wi-Fi；`secrets.h` 已被 Git 忽略，不会进入公开仓库。上电或按 FLASH 会联网更新，默认每小时自动更新一次。
