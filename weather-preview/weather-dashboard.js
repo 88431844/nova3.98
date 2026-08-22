@@ -4,6 +4,12 @@ const HOURLY_POINTS = 8;
 const FORECAST_DAYS = 7;
 const PANEL_WIDTH = 768;
 const PANEL_HEIGHT = 552;
+const CURRENT_TEMPERATURE_SIZE = 68;
+const CURRENT_TEMPERATURE_X = 135;
+const CURRENT_TEMPERATURE_Y = 66;
+const CURRENT_CONDITION_Y = 150;
+const HOURLY_TEMPERATURE_Y = 62;
+const HOURLY_ICON_Y = 88;
 const COLORS = {
   ink: "#111111",
   paper: "#fffef8",
@@ -17,8 +23,10 @@ const SAMPLE_WEATHER = {
   date: "2026-08-22",
   updated: "09:10",
   temperature: 31,
-  apparent: 34,
   humidity: 68,
+  sunrise: "06:08",
+  sunset: "18:47",
+  precipitationProbability: 30,
   currentCode: 0,
   hourly: [
     { time: "09:00", temperature: 27, code: 0 },
@@ -141,16 +149,27 @@ function renderDashboard(data) {
   box(16, 52, 752, 310);
   box(316, 52, 752, 310);
   addIcon(data.currentCode, 36, 80, 84, 84);
-  mono(`${Math.round(data.temperature)}°`, 145, 78, 52, 900);
-  label(weatherText(data.currentCode), 145, 142, 31, 800);
+  mono(
+    `${Math.round(data.temperature)}°`,
+    CURRENT_TEMPERATURE_X,
+    CURRENT_TEMPERATURE_Y,
+    CURRENT_TEMPERATURE_SIZE,
+    900,
+  );
+  label(weatherText(data.currentCode), 145, CURRENT_CONDITION_Y, 31, 800);
   ctx.fillStyle = COLORS.ink;
-  ctx.fillRect(28, 210, 276, 1);
-  label("体感", 28, 258, 29, 900);
-  mono(`${Math.round(data.apparent)}°`, 98, 266, 22, 800);
-  label("湿度", 158, 258, 29, 900);
-  mono(`${Math.round(data.humidity)}%`, 234, 266, 22, 800);
+  ctx.fillRect(16, 202, 300, 1);
+  ctx.fillRect(16, 256, 300, 1);
+  ctx.fillRect(166, 202, 1, 108);
+  label("日出", 28, 218, 22, 900);
+  mono(data.sunrise, 80, 220, 20, 800);
+  label("日落", 178, 218, 22, 900);
+  mono(data.sunset, 230, 220, 20, 800);
+  label("降水概率", 28, 264, 20, 900);
+  mono(`${Math.round(data.precipitationProbability)}%`, 118, 266, 20, 800);
+  label("湿度", 178, 264, 22, 900);
+  mono(`${Math.round(data.humidity)}%`, 230, 266, 20, 800);
 
-  label("近8小时天气", 336, 56, 27, 900);
   const hourly = data.hourly.slice(0, HOURLY_POINTS);
   const temperatures = hourly.map((entry) => entry.temperature);
   const minimum = Math.min(...temperatures);
@@ -164,11 +183,19 @@ function renderDashboard(data) {
   ctx.strokeStyle = COLORS.guide;
   ctx.lineWidth = 1;
   points.forEach((point) => {
-    mono(`${Math.round(point.temperature)}°`, point.x, 94, 20, 900, COLORS.ink, "center");
-    addIcon(point.code, point.x - 14, 120, 28, 28);
+    mono(
+      `${Math.round(point.temperature)}°`,
+      point.x,
+      HOURLY_TEMPERATURE_Y,
+      20,
+      900,
+      COLORS.ink,
+      "center",
+    );
+    addIcon(point.code, point.x - 14, HOURLY_ICON_Y, 28, 28);
     ctx.beginPath();
-    ctx.moveTo(point.x, 151);
-    ctx.lineTo(point.x, Math.max(151, point.y - 7));
+    ctx.moveTo(point.x, 119);
+    ctx.lineTo(point.x, Math.max(119, point.y - 7));
     ctx.stroke();
   });
   ctx.setLineDash([]);
@@ -211,6 +238,9 @@ function mapOpenMeteo(payload) {
   if (!current || !hourly || !daily || typeof current.time !== "string") {
     throw new Error("天气接口字段不完整");
   }
+  if (!Array.isArray(daily.sunrise) || !Array.isArray(daily.sunset)) {
+    throw new Error("天气接口缺少日出日落");
+  }
   const firstHour = hourly.time.findIndex((time) => time >= current.time);
   if (firstHour < 0) throw new Error("天气接口缺少当前小时");
   const alignedHourly = Array.from({ length: HOURLY_POINTS }, (_, index) => {
@@ -238,14 +268,19 @@ function mapOpenMeteo(payload) {
     entry.date && Number.isFinite(entry.high) && Number.isFinite(entry.low) &&
     Number.isFinite(entry.rain) && Number.isFinite(entry.code)
   );
-  if (!validHourly || !validDaily) throw new Error("天气接口记录不足");
+  const precipitationProbability = Number(daily.precipitation_probability_max[0]);
+  if (!validHourly || !validDaily || !Number.isFinite(precipitationProbability)) {
+    throw new Error("天气接口记录不足");
+  }
   return {
     ip: SAMPLE_WEATHER.ip,
     date: current.time.slice(0, 10),
     updated: current.time.slice(11, 16),
     temperature: Number(current.temperature_2m),
-    apparent: Number(current.apparent_temperature),
     humidity: Number(current.relative_humidity_2m),
+    sunrise: daily.sunrise[0].slice(11, 16),
+    sunset: daily.sunset[0].slice(11, 16),
+    precipitationProbability,
     currentCode: Number(current.weather_code),
     hourly: alignedHourly,
     daily: alignedDaily,
@@ -253,7 +288,7 @@ function mapOpenMeteo(payload) {
 }
 
 async function loadWeather() {
-  const endpoint = "https://api.open-meteo.com/v1/forecast?latitude=22.5431&longitude=114.0579&timezone=Asia%2FShanghai&forecast_days=8&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code&hourly=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,weather_code";
+  const endpoint = "https://api.open-meteo.com/v1/forecast?latitude=22.5431&longitude=114.0579&timezone=Asia%2FShanghai&forecast_days=8&current=temperature_2m,relative_humidity_2m,weather_code&hourly=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,weather_code,sunrise,sunset";
   const controller = new AbortController();
   const requestTimeout = setTimeout(() => controller.abort(), 8000);
   try {

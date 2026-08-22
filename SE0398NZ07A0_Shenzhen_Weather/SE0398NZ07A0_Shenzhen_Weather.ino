@@ -46,8 +46,8 @@ constexpr uint16_t kChartTop = 52;
 constexpr uint16_t kChartBottom = 310;
 constexpr uint16_t kChartPlotLeft = 340;
 constexpr uint16_t kChartPlotRight = 730;
-constexpr int16_t kChartTemperatureY = 94;
-constexpr int16_t kChartIconY = 120;
+constexpr int16_t kChartTemperatureY = 62;
+constexpr int16_t kChartIconY = 88;
 constexpr int16_t kChartPlotTop = 158;
 constexpr int16_t kChartPlotBottom = 247;
 constexpr int16_t kChartTimeY = 282;
@@ -58,16 +58,16 @@ enum Color : uint8_t { BLACK = 0, WHITE = 1, YELLOW = 2, RED = 3 };
 
 struct WeatherData {
   float temperature = 0;
-  float apparent = 0;
   int humidity = 0;
+  int precipitationProbability = -1;
   int currentCode = 3;
   float high[kForecastDays] = {0};
   float low[kForecastDays] = {0};
   int rain[kForecastDays] = {0};
   int codes[kForecastDays] = {3};
   char dates[kForecastDays][11] = {{0}};
-  char sunrise[kForecastDays][6] = {{0}};
-  char sunset[kForecastDays][6] = {{0}};
+  char sunrise[6] = "--:--";
+  char sunset[6] = "--:--";
   char currentDate[11] = "----------";
   float hourlyTemperature[kHourlyPoints] = {0};
   int hourlyCodes[kHourlyPoints] = {3};
@@ -290,6 +290,13 @@ bool jsonString(const String& json, const char* key, char* output,
   return true;
 }
 
+bool copyIsoHourMinute(const char* isoTime, char output[6]) {
+  if (!isoTime || strlen(isoTime) < 16 || isoTime[13] != ':') return false;
+  snprintf(output, 6, "%c%c:%c%c", isoTime[11], isoTime[12], isoTime[14],
+           isoTime[15]);
+  return true;
+}
+
 bool stockField(const String& body, int index, char* output, size_t outputSize) {
   int pos = body.indexOf('=');
   if (pos < 0) return false;
@@ -378,7 +385,7 @@ bool fetchWeather() {
   client->setBufferSizes(512, 512);
   HTTPClient http;
   const char* url =
-      "https://api.open-meteo.com/v1/forecast?latitude=22.5431&longitude=114.0579&timezone=Asia%2FShanghai&forecast_days=8&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code&hourly=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,weather_code,sunrise,sunset";
+      "https://api.open-meteo.com/v1/forecast?latitude=22.5431&longitude=114.0579&timezone=Asia%2FShanghai&forecast_days=8&current=temperature_2m,relative_humidity_2m,weather_code&hourly=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,weather_code,sunrise,sunset";
   bool ok = false;
   if (http.begin(*client, url)) {
     http.setTimeout(20000);
@@ -396,9 +403,15 @@ bool fetchWeather() {
         const JsonObject daily = doc["daily"].as<JsonObject>();
         const JsonObject hourly = doc["hourly"].as<JsonObject>();
         next.temperature = current["temperature_2m"] | NAN;
-        next.apparent = current["apparent_temperature"] | NAN;
         next.humidity = current["relative_humidity_2m"] | -1;
+        next.precipitationProbability =
+            daily["precipitation_probability_max"][0] | -1;
         next.currentCode = current["weather_code"] | 3;
+        const char* todaySunrise = daily["sunrise"][0] | "";
+        const char* todaySunset = daily["sunset"][0] | "";
+        const bool sunriseValid =
+            copyIsoHourMinute(todaySunrise, next.sunrise);
+        const bool sunsetValid = copyIsoHourMinute(todaySunset, next.sunset);
 
         for (uint8_t day = 0; day < kForecastDays; ++day) {
           const uint8_t sourceDay = day + 1;
@@ -409,12 +422,6 @@ bool fetchWeather() {
           next.codes[day] = daily["weather_code"][sourceDay] | 3;
           const char* date = daily["time"][sourceDay] | "";
           snprintf(next.dates[day], sizeof(next.dates[day]), "%s", date);
-          const char* sunrise = daily["sunrise"][sourceDay] | "";
-          const char* sunset = daily["sunset"][sourceDay] | "";
-          snprintf(next.sunrise[day], sizeof(next.sunrise[day]), "%.5s",
-                   sunrise);
-          snprintf(next.sunset[day], sizeof(next.sunset[day]), "%.5s",
-                   sunset);
         }
 
         const char* currentTime = current["time"] | "";
@@ -459,6 +466,8 @@ bool fetchWeather() {
         next.valid = dailyValid && !isnan(next.temperature) &&
                      next.temperature > -100.0f &&
                      next.temperature < 100.0f && next.humidity >= 0 &&
+                     next.precipitationProbability >= 0 && sunriseValid &&
+                     sunsetValid &&
                      next.hourlyCount == kHourlyPoints;
         if (next.valid) {
           gWeather = next;
@@ -467,9 +476,12 @@ bool fetchWeather() {
                      currentTime[11], currentTime[12], currentTime[14],
                      currentTime[15]);
           }
-          Serial.printf("Weather values: %.1fC, humidity %d%%, code %d, hourly %u\n",
-                        gWeather.temperature, gWeather.humidity,
-                        gWeather.currentCode, gWeather.hourlyCount);
+          Serial.printf(
+              "Weather values: %.1fC, humidity %d%%, rain %d%%, sunrise %s, "
+              "sunset %s, code %d, hourly %u\n",
+              gWeather.temperature, gWeather.humidity,
+              gWeather.precipitationProbability, gWeather.sunrise,
+              gWeather.sunset, gWeather.currentCode, gWeather.hourlyCount);
           ok = true;
         } else {
           Serial.println(F("Weather response missing valid current data."));
@@ -879,9 +891,6 @@ uint16_t hourlyChartX(uint8_t index, uint8_t count) {
 
 void drawHourlyChartRow(uint16_t row) {
   drawRectRow(row, kChartTop, kChartBottom, kChartLeft, kChartRight, BLACK);
-  drawCjkRow(row, 336, 56, 2, "近", BLACK);
-  drawAsciiRow(row, 370, 56, 2, "8", BLACK);
-  drawCjkRow(row, 384, 56, 2, "小时天气", BLACK);
   if (gWeather.hourlyCount == 0) return;
 
   float minimum = gWeather.hourlyTemperature[0];
@@ -920,17 +929,27 @@ void drawWeatherRow(uint16_t row) {
   drawAsciiRightAlignedRow(row, 746, 21, 2, gWeather.updated, BLACK);
   drawRectRow(row, 52, 310, 16, 752, BLACK);
   drawIconScaledRow(row, 36, 80, 84, 84, gWeather.currentCode);
-  drawTemperatureRow(row, 145, 78, 4, gWeather.temperature, BLACK);
-  drawCjkRow(row, 145, 142, 2, weatherText(gWeather.currentCode), BLACK);
-  if (row == 210) {
-    for (uint16_t x = 28; x <= 304; ++x) setPixel(x, BLACK);
+  drawTemperatureRow(row, 135, 66, 8, gWeather.temperature, BLACK);
+  drawCjkRow(row, 145, 150, 2, weatherText(gWeather.currentCode), BLACK);
+  if (row == 202 || row == 256) {
+    for (uint16_t x = 16; x <= 316; ++x) setPixel(x, BLACK);
   }
-  drawCjkRow(row, 28, 258, 2, "体感", BLACK);
-  drawTemperatureRow(row, 98, 266, 2, gWeather.apparent, BLACK);
+  if (row >= 202 && row <= 310) setPixel(166, BLACK);
+
+  drawCjkRow(row, 24, 213, 2, "日出", BLACK);
+  drawAsciiRow(row, 98, 222, 2, gWeather.sunrise, BLACK);
+  drawCjkRow(row, 174, 213, 2, "日落", BLACK);
+  drawAsciiRow(row, 248, 222, 2, gWeather.sunset, BLACK);
+
+  char precipitation[12];
+  snprintf(precipitation, sizeof(precipitation), "%d%%",
+           gWeather.precipitationProbability);
+  drawCjkRow(row, 28, 274, 1, "降水概率", BLACK);
+  drawAsciiRow(row, 108, 276, 2, precipitation, BLACK);
   char humidity[12];
   snprintf(humidity, sizeof(humidity), "%d%%", gWeather.humidity);
-  drawCjkRow(row, 158, 258, 2, "湿度", BLACK);
-  drawAsciiRow(row, 234, 266, 2, humidity, BLACK);
+  drawCjkRow(row, 178, 267, 2, "湿度", BLACK);
+  drawAsciiRow(row, 252, 276, 2, humidity, BLACK);
   drawHourlyChartRow(row);
 
   for (uint8_t day = 0; day < kForecastDays; ++day) {

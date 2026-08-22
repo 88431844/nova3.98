@@ -31,7 +31,7 @@ def test_clear_weather_uses_sunny_icon() -> None:
 def test_weather_text_is_black_on_white() -> None:
     text = SKETCH.read_text(encoding="utf-8")
     assert "fillRow(WHITE);" in text
-    assert "drawCjkRow(row, 145, 142, 2, weatherText(gWeather.currentCode), BLACK);" in text
+    assert "drawCjkRow(row, 145, 150, 2, weatherText(gWeather.currentCode), BLACK);" in text
     assert (
         "drawTemperatureRow(row, temperatureX, 472, 2, gWeather.high[day], BLACK);"
         in text

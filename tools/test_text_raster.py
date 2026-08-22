@@ -69,7 +69,7 @@ def test_sketch_keeps_ascii_and_panel_coordinates_unmirrored() -> None:
     assert "return displayColumn < glyphWidth ? displayColumn : 0;" in text
     assert "asciiSourceColumn(gx, 5)" in text
     assert "constexpr bool kMirrorWeather = false;" in text
-    assert "drawCjkRow(row, 145, 142, 2, weatherText" in text
+    assert "drawCjkRow(row, 145, 150, 2, weatherText" in text
     assert "drawAsciiRow(row, 22, 21, 2, gIpText" in text
     assert "drawAsciiRow(row, 360, 21, 2, gIpText" in text
     assert text.count("drawAsciiRow(row, 22, 21, 2, gIpText") == 1

@@ -30,6 +30,8 @@ def test_requests_eight_days_and_aligned_hourly_weather_codes() -> None:
     assert "constexpr uint8_t kForecastDays = 7;" in text
     assert "forecast_days=8" in text
     assert "hourly=temperature_2m,weather_code" in text
+    assert "precipitation_probability_max,weather_code,sunrise,sunset" in text
+    assert "apparent_temperature" not in text
     assert 'hourly["weather_code"].as<JsonArray>()' in text
     assert "next.hourlyCodes[i] = hourlyCodes[source]" in text
     assert "next.hourlyCount == kHourlyPoints" in text
@@ -61,6 +63,18 @@ def test_header_date_is_separate_from_future_dates() -> None:
     assert "snprintf(next.currentDate" in text
 
 
+def test_current_day_details_are_parsed_for_the_metric_grid() -> None:
+    text = source()
+    assert "float apparent" not in text
+    assert "int precipitationProbability = -1;" in text
+    assert 'char sunrise[6] = "--:--";' in text
+    assert 'char sunset[6] = "--:--";' in text
+    assert 'daily["precipitation_probability_max"][0]' in text
+    assert 'daily["sunrise"][0]' in text
+    assert 'daily["sunset"][0]' in text
+    assert "copyIsoHourMinute" in text
+
+
 def test_font_contains_big_character() -> None:
     assert "0x5927" in FONT.read_text(encoding="utf-8")
 
@@ -82,12 +96,10 @@ def test_degree_helpers_are_used() -> None:
 def test_approved_header_chart_and_forecast_geometry() -> None:
     text = source()
     assert "constexpr uint16_t kChartTop = 52;" in text
-    assert "constexpr int16_t kChartTemperatureY = 94;" in text
-    assert "constexpr int16_t kChartIconY = 120;" in text
+    assert "constexpr int16_t kChartTemperatureY = 62;" in text
+    assert "constexpr int16_t kChartIconY = 88;" in text
     assert "constexpr int16_t kChartTimeY = 282;" in text
-    assert 'drawCjkRow(row, 336, 56, 2, "近", BLACK);' in text
-    assert 'drawAsciiRow(row, 370, 56, 2, "8", BLACK);' in text
-    assert 'drawCjkRow(row, 384, 56, 2, "小时天气", BLACK);' in text
+    assert '"近8小时天气"' not in text
     assert 'drawAsciiRow(row, 22, 21, 2, gIpText, BLACK);' in text
     assert 'drawCjkRow(row, 640, 20, 1, "更新", BLACK);' in text
     assert (
@@ -95,6 +107,14 @@ def test_approved_header_chart_and_forecast_geometry() -> None:
         in text
     )
     assert '"深圳天气"' not in text
+    assert (
+        "drawTemperatureRow(row, 135, 66, 8, gWeather.temperature, BLACK);"
+        in text
+    )
+    assert (
+        'drawCjkRow(row, 145, 150, 2, weatherText(gWeather.currentCode), BLACK);'
+        in text
+    )
     assert (
         "const uint16_t right = 16 + ((day + 1) * 736) / kForecastDays;"
         in text
@@ -105,11 +125,21 @@ def test_approved_header_chart_and_forecast_geometry() -> None:
     )
 
 
-def test_current_details_have_a_dedicated_row() -> None:
+def test_current_details_use_an_enlarged_two_by_two_grid() -> None:
     text = source()
-    assert "if (row == 210)" in text
-    assert 'drawCjkRow(row, 28, 258, 2, "体感", BLACK);' in text
-    assert 'drawCjkRow(row, 158, 258, 2, "湿度", BLACK);' in text
+    assert "if (row == 202 || row == 256)" in text
+    assert "for (uint16_t x = 16; x <= 316; ++x)" in text
+    assert "if (row >= 202 && row <= 310) setPixel(166, BLACK);" in text
+    assert 'drawCjkRow(row, 24, 213, 2, "日出", BLACK);' in text
+    assert "drawAsciiRow(row, 98, 222, 2, gWeather.sunrise, BLACK);" in text
+    assert 'drawCjkRow(row, 174, 213, 2, "日落", BLACK);' in text
+    assert "drawAsciiRow(row, 248, 222, 2, gWeather.sunset, BLACK);" in text
+    assert 'drawCjkRow(row, 28, 274, 1, "降水概率", BLACK);' in text
+    assert "drawAsciiRow(row, 108, 276, 2, precipitation, BLACK);" in text
+    assert 'drawCjkRow(row, 178, 267, 2, "湿度", BLACK);' in text
+    assert "drawAsciiRow(row, 252, 276, 2, humidity, BLACK);" in text
+    assert '"体感"' not in text
+    assert "gWeather.apparent" not in text
 
 
 def test_forecast_labels_and_bands_match_approved_layout() -> None:
