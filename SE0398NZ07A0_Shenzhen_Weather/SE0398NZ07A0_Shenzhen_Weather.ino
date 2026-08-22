@@ -963,8 +963,11 @@ void drawWeatherRow(uint16_t row) {
 
     char rain[12];
     snprintf(rain, sizeof(rain), "%d%%", gWeather.rain[day]);
-    drawCjkCenteredRow(row, center, 508, 1, "降水", BLACK);
-    drawAsciiCenteredRow(row, center, 524, 2, rain, BLACK);
+    const uint16_t precipitationWidth =
+        cjkTextWidth("降水", 1) + 4 + asciiTextWidth(rain, 2);
+    const uint16_t precipitationX = center - precipitationWidth / 2;
+    drawCjkRow(row, precipitationX, 508, 1, "降水", BLACK);
+    drawAsciiRow(row, precipitationX + 37, 510, 2, rain, BLACK);
   }
 }
 

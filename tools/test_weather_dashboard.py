@@ -118,7 +118,11 @@ def test_forecast_labels_and_bands_match_approved_layout() -> None:
     assert "weekdayLabel(gWeather.dates[day])" in text
     assert "drawIconScaledRow(row, iconLeft, 390, 64, 64" in text
     assert "drawTemperatureRow" in text
-    assert 'drawCjkCenteredRow(row, center, 508, 1, "降水", BLACK);' in text
+    assert 'drawCjkRow(row, precipitationX, 508, 1, "降水", BLACK);' in text
+    assert (
+        "drawAsciiRow(row, precipitationX + 37, 510, 2, rain, BLACK);"
+        in text
+    )
 
 
 def test_hourly_chart_labels_every_point() -> None:

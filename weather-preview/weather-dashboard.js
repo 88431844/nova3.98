@@ -201,8 +201,7 @@ function renderDashboard(data) {
     mono(day.date.slice(5), center, 362, 14, 800, COLORS.ink, "center");
     addIcon(day.code, center - 32, 390, 64, 64);
     mono(`${Math.round(day.high)}°/${Math.round(day.low)}°`, center, 472, 16, 900, COLORS.ink, "center");
-    label("降水", center, 508, 14, 900, COLORS.ink, "center");
-    mono(`${Math.round(day.rain)}%`, center, 524, 14, 900, COLORS.ink, "center");
+    label(`降水 ${Math.round(day.rain)}%`, center, 508, 14, 900, COLORS.ink, "center");
   });
 }
 
@@ -256,8 +255,13 @@ function mapOpenMeteo(payload) {
 
 async function loadWeather() {
   const endpoint = "https://api.open-meteo.com/v1/forecast?latitude=22.5431&longitude=114.0579&timezone=Asia%2FShanghai&forecast_days=8&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code&hourly=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,weather_code";
+  const controller = new AbortController();
+  const requestTimeout = setTimeout(() => controller.abort(), 8000);
   try {
-    const response = await fetch(endpoint, { cache: "no-store" });
+    const response = await fetch(endpoint, {
+      cache: "no-store",
+      signal: controller.signal,
+    });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const data = mapOpenMeteo(await response.json());
     renderDashboard(data);
@@ -266,6 +270,8 @@ async function loadWeather() {
     console.warn("Open-Meteo unavailable; showing sample data", error);
     renderDashboard(SAMPLE_WEATHER);
     status.textContent = "示例数据 · 实时接口暂不可用";
+  } finally {
+    clearTimeout(requestTimeout);
   }
 }
 

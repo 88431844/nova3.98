@@ -25,6 +25,8 @@ def test_preview_uses_live_free_api_with_sample_fallback() -> None:
     assert "hourly=temperature_2m,weather_code" in JS
     assert "SAMPLE_WEATHER" in JS
     assert "renderDashboard" in JS
+    assert "AbortController" in JS
+    assert "clearTimeout" in JS
 
 
 def test_preview_matches_approved_labels_and_counts() -> None:
@@ -34,6 +36,7 @@ def test_preview_matches_approved_labels_and_counts() -> None:
     assert "HOURLY_POINTS = 8" in JS
     assert "FORECAST_DAYS = 7" in JS
     assert "°" in JS
+    assert "`降水 ${Math.round(day.rain)}%`" in JS
 
 
 if __name__ == "__main__":
