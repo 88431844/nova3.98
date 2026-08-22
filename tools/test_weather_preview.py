@@ -54,7 +54,7 @@ def test_current_details_use_two_by_two_metric_layout_without_apparent_temperatu
     assert "mono(data.sunrise, 80, 220, 20, 800)" in JS
     assert 'label("日落", 178, 218, 22, 900)' in JS
     assert "mono(data.sunset, 230, 220, 20, 800)" in JS
-    assert 'label("降水概率", 28, 264, 20, 900)' in JS
+    assert 'label("降水概率", 24, 264, 21, 900)' in JS
     assert 'label("湿度", 178, 264, 22, 900)' in JS
     assert "ctx.fillRect(16, 256, 300, 1)" in JS
     assert "ctx.fillRect(166, 202, 1, 108)" in JS

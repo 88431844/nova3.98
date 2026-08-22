@@ -51,8 +51,11 @@ constexpr int16_t kChartIconY = 88;
 constexpr int16_t kChartPlotTop = 158;
 constexpr int16_t kChartPlotBottom = 247;
 constexpr int16_t kChartTimeY = 282;
+constexpr uint8_t kPrecipitationLabelSize = 20;
 static_assert(16 + (kForecastDays * 736) / kForecastDays == 752,
               "Forecast strip must align with the main frame");
+static_assert(24 + 4 * (kPrecipitationLabelSize + 1) - 1 < 112,
+              "Precipitation label must leave room for its value");
 
 enum Color : uint8_t { BLACK = 0, WHITE = 1, YELLOW = 2, RED = 3 };
 
@@ -706,6 +709,29 @@ void drawCjkRow(uint16_t row, uint16_t x, uint16_t y, uint8_t scale,
   }
 }
 
+void drawCjkSizedRow(uint16_t row, uint16_t x, uint16_t y,
+                     uint8_t pixelSize, const char* text, Color color) {
+  const uint16_t glyphHeight = pixelSize;
+  if (row < y || row >= y + glyphHeight) return;
+  const uint8_t gy = (row - y) * 16 / pixelSize;
+  uint16_t cursor = x;
+  const char* p = text;
+  while (*p) {
+    const uint32_t codepoint = nextUtf8(p);
+    if (codepoint < 128) {
+      cursor += pixelSize / 2;
+      continue;
+    }
+    for (uint8_t gx = 0; gx < pixelSize; ++gx) {
+      const uint8_t sourceX = gx * 16 / pixelSize;
+      if (glyphPixel(codepoint, cjkSourceColumn(sourceX, 16), gy)) {
+        setPixel(cursor + gx, color);
+      }
+    }
+    cursor += pixelSize + 1;
+  }
+}
+
 void drawAsciiRow(uint16_t row, uint16_t x, uint16_t y, uint8_t scale,
                   const char* text, Color color) {
   if (row < y || row >= y + 7 * scale) return;
@@ -944,8 +970,9 @@ void drawWeatherRow(uint16_t row) {
   char precipitation[12];
   snprintf(precipitation, sizeof(precipitation), "%d%%",
            gWeather.precipitationProbability);
-  drawCjkRow(row, 28, 274, 1, "降水概率", BLACK);
-  drawAsciiRow(row, 108, 276, 2, precipitation, BLACK);
+  drawCjkSizedRow(row, 24, 271, kPrecipitationLabelSize, "降水概率",
+                  BLACK);
+  drawAsciiRow(row, 112, 276, 2, precipitation, BLACK);
   char humidity[12];
   snprintf(humidity, sizeof(humidity), "%d%%", gWeather.humidity);
   drawCjkRow(row, 178, 267, 2, "湿度", BLACK);

@@ -134,12 +134,25 @@ def test_current_details_use_an_enlarged_two_by_two_grid() -> None:
     assert "drawAsciiRow(row, 98, 222, 2, gWeather.sunrise, BLACK);" in text
     assert 'drawCjkRow(row, 174, 213, 2, "日落", BLACK);' in text
     assert "drawAsciiRow(row, 248, 222, 2, gWeather.sunset, BLACK);" in text
-    assert 'drawCjkRow(row, 28, 274, 1, "降水概率", BLACK);' in text
-    assert "drawAsciiRow(row, 108, 276, 2, precipitation, BLACK);" in text
+    assert (
+        'drawCjkSizedRow(row, 24, 271, kPrecipitationLabelSize, "降水概率",'
+        in text
+    )
+    assert "drawAsciiRow(row, 112, 276, 2, precipitation, BLACK);" in text
     assert 'drawCjkRow(row, 178, 267, 2, "湿度", BLACK);' in text
     assert "drawAsciiRow(row, 252, 276, 2, humidity, BLACK);" in text
     assert '"体感"' not in text
     assert "gWeather.apparent" not in text
+
+
+def test_precipitation_label_uses_intermediate_cjk_size_that_fits_its_cell() -> None:
+    text = source()
+    assert "void drawCjkSizedRow(" in text
+    assert "const uint16_t glyphHeight = pixelSize;" in text
+    assert "const uint8_t gy = (row - y) * 16 / pixelSize;" in text
+    assert "const uint8_t sourceX = gx * 16 / pixelSize;" in text
+    assert "constexpr uint8_t kPrecipitationLabelSize = 20;" in text
+    assert "static_assert(24 + 4 * (kPrecipitationLabelSize + 1) - 1 < 112" in text
 
 
 def test_forecast_labels_and_bands_match_approved_layout() -> None:

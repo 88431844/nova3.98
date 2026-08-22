@@ -165,7 +165,7 @@ function renderDashboard(data) {
   mono(data.sunrise, 80, 220, 20, 800);
   label("日落", 178, 218, 22, 900);
   mono(data.sunset, 230, 220, 20, 800);
-  label("降水概率", 28, 264, 20, 900);
+  label("降水概率", 24, 264, 21, 900);
   mono(`${Math.round(data.precipitationProbability)}%`, 118, 266, 20, 800);
   label("湿度", 178, 264, 22, 900);
   mono(`${Math.round(data.humidity)}%`, 230, 266, 20, 800);
