@@ -65,11 +65,15 @@ def test_font_contains_big_character() -> None:
     assert "0x5927" in FONT.read_text(encoding="utf-8")
 
 
-def test_weekday_and_degree_helpers_are_used() -> None:
+def test_weekday_helpers_are_used() -> None:
     text = source()
     assert "uint8_t weekdayFromIsoDate(const char* date)" in text
     assert "static const char* const labels[] = {" in text
     assert '"周日", "周一", "周二", "周三", "周四", "周五", "周六"' in text
+
+
+def test_degree_helpers_are_used() -> None:
+    text = source()
     assert "drawTemperatureRow" in text
     assert '"%.0fC"' not in text
     assert '"%.1fC"' not in text
