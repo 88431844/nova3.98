@@ -9,9 +9,12 @@
 - `SE0398NZ07A0_NodeMCU_Test/SE0398NZ07A0_NodeMCU_Test.ino`：Arduino 测试程序，自动显示真实四色照片。
 - `SE0398NZ07A0_NodeMCU_Test/sunset_image.h`：达马万德山图片的 768×552、2-bit 四色数据。
 - `SE0398NZ07A0_NodeMCU_Test/marilyn_image.h`：梦露图片的 768×552、2-bit 四色数据。
-- `SE0398NZ07A0_Shenzhen_Weather/SE0398NZ07A0_Shenzhen_Weather.ino`：深圳三日天气看板，直接访问 Open-Meteo。
+- `SE0398NZ07A0_Shenzhen_Weather/SE0398NZ07A0_Shenzhen_Weather.ino`：比亚迪（002594）行情 + 深圳天气双页面看板，直接访问免 Key 接口。
+- `SE0398NZ07A0_Shenzhen_Weather/weather_icons.h`：由 iconfont.cn 天气 SVG 离线栅格化的 96×96 图标掩码。
 - `SE0398NZ07A0_Shenzhen_Weather/secrets.example.h`：Wi-Fi 配置模板；本地复制为 `secrets.h`，不要提交真实密码。
 - `tools/generate_epd_image.swift`：图片裁剪、四色量化和 2-bit 打包工具。
+- `tools/generate_weather_icons.swift`：将 `tools/iconfont_weather_paths.json` 转换为墨水屏图标头文件。
+- `weather-preview/index.html`：与设备同为 768×552 坐标的实时天气网页预览。
 
 ## 适用开发板
 
@@ -27,24 +30,26 @@ Upload Speed：115200
 
 ## 接线
 
-下表中的屏幕信号名，对应原 PCB 接线图片里红线所指的测试焊盘。`SDA` 在这里是 SPI `MOSI`，不是 I2C。
+下表中的屏幕信号名，对应替换 PCB 接线图片里红线所指的测试焊盘。`SDA` 在这里是 SPI `MOSI`，不是 I2C。
 
 ![NodeMCU ESP8266 接线标注](nodemcu_wiring_annotated.png)
 
-| 原 PCB | NodeMCU 丝印 | ESP8266 GPIO | 方向 |
+| 替换 PCB | NodeMCU 丝印 | ESP8266 GPIO | 方向 |
 |---|---:|---:|---|
 | `GND` | `G` / `GND` | GND | 共地 |
-| `3.3V` | `3V3` | 3.3V | 给原 PCB 供电 |
+| `3.3V` | `3V3` | 3.3V | 给替换 PCB 供电 |
 | `SDA/MOSI` | `D7` | GPIO13 | NodeMCU → 屏幕 |
 | `CLK/SCK` | `D5` | GPIO14 | NodeMCU → 屏幕 |
-| `CS` | `D1` | GPIO5 | NodeMCU → 屏幕 |
-| `DC` | `D2` | GPIO4 | NodeMCU → 屏幕 |
-| `RST` | `D0` | GPIO16 | NodeMCU → 屏幕 |
-| `BUSY` | `D6` | GPIO12 | 屏幕 → NodeMCU |
+| `CS` | `D8` | GPIO15 | 驱动板 → 屏幕 |
+| `DC` | `D2` | GPIO4 | 驱动板 → 屏幕 |
+| `RST` | `D1` | GPIO5 | 驱动板 → 屏幕 |
+| `BUSY` | `D0` | GPIO16 | 屏幕 → 驱动板 |
 
-建议颜色：红线接 3.3V、黑线接 GND，其余每根使用不同颜色并在两端贴标签。`SCK/MOSI/CS/DC/RST` 各串联一个 `100–330Ω` 电阻，推荐 `220Ω` 并尽量靠近 NodeMCU；飞线尽量短于 10cm，SCK 最短。建议在 `CS`、`RST` 与 3.3V 之间各加 `10kΩ` 上拉，防止 NodeMCU 启动时屏幕被误选中或复位。BUSY 可选串联 `1kΩ` 作为输入保护。
+建议颜色：红线接 3.3V、黑线接 GND，其余每根使用不同颜色并在两端贴标签。`SCK/MOSI/CS/DC/RST` 各串联一个 `100–330Ω` 电阻，推荐 `220Ω` 并尽量靠近 NodeMCU；飞线尽量短于 10cm，SCK 最短。`RST` 可加 `10kΩ` 上拉；不要把 `CS=D8/GPIO15` 上拉到 3.3V，因为 ESP8266 上电时该脚需要保持低电平才能正常启动。BUSY 可选串联 `1kΩ` 作为输入保护。
 
-没有使用 `D3/GPIO0`、`D4/GPIO2`、`D8/GPIO15`，因为它们会影响 ESP8266 启动模式。`D6` 虽然也是硬件 SPI 的 MISO，但本工程不读取 SPI，可以安全地将它作为 BUSY 输入。
+本项目按 `EspInfo` 中“Waveshare e-Paper ESP8266 Driver Board”旧版映射使用 `D8/D2/D1/D0`。对应关系是 `CS=GPIO15`、`DC=GPIO4`、`RST=GPIO5`、`BUSY=GPIO16`；硬件 SPI 仍为 `D5/GPIO14=SCK` 和 `D7/GPIO13=MOSI`。该驱动板不使用电平转换器，板上已处理启动相关连接。
+
+驱动板板载 `FLASH` 按键对应 `D3/GPIO0`，测试固件用它切换图片，天气固件用它强制更新；不按键时画面保持不变。
 
 ### 3.3V 焊点必须先确认
 
@@ -73,12 +78,12 @@ Upload Speed：115200
 1. 先只用 USB 连接 NodeMCU，不接屏幕，烧录 `.ino`。
 2. 断开 USB，按照接线表焊接；GND 最先接，3.3V 最后接。
 3. 检查所有相邻焊盘无短路，再连接 USB。
-4. 程序上电等待 3 秒后显示达马万德山图片；按 NodeMCU 板上的 `FLASH` 按键切换到梦露图片，再按一次切回。不按键时画面保持不变。
+4. 程序上电等待 3 秒后显示天气页；短按驱动板 `FLASH`（GPIO0）刷新当前页，长按约 1.2 秒切换天气页/比亚迪行情页。
 5. 串口监视器是可选的；使用时设置为 `115200 baud`，可以查看 BUSY、写入进度和错误原因。
 6. 刷新时 BUSY 会变为 LOW，四色全刷可能持续数十秒。不要在刷新期间断电。
 7. 每次切换图片都会关闭墨水屏高压并完整刷新；刷新完成后保持当前画面，不会自动切换。
 
-`FLASH` 按键对应 `D3/GPIO0`，按键为低电平有效。不要在复位或烧录时按住该键，否则 ESP8266 会进入下载模式。
+驱动板上的 `FLASH` 按键为 `D3/GPIO0`、低电平有效。烧录或复位时不要按住它。
 
 预期画面一：从 Wikimedia Commons 获取并量化的伊朗达马万德山日落照片。原图作者 Mahdi Kalhor，采用 CC BY 3.0：
 
@@ -121,6 +126,10 @@ constexpr bool kRotateImage180 = false;
 
 程序使用 1MHz SPI、逐字节 CS、刷新阶段 180 秒 BUSY 超时和 A0 特有的行映射：前 276 个逻辑行写入物理偶数行，后 276 个逻辑行反向写入物理奇数行。
 
-### 深圳天气固件
+### 比亚迪 + 深圳天气固件
 
-天气 sketch 使用深圳坐标（22.5431, 114.0579）访问 Open-Meteo，显示当前天气和未来三天预报。ESP8266 只支持 2.4GHz Wi-Fi。烧录前在该 sketch 目录复制 `secrets.example.h` 为 `secrets.h` 并填写本地 Wi-Fi；`secrets.h` 已被 Git 忽略，不会进入公开仓库。上电或按 FLASH 会联网更新，默认每小时自动更新一次。
+该 sketch 使用深圳实际坐标（22.5431, 114.0579）访问免费、免 Key 的 Open-Meteo，在白底天气页显示当前天气、设备 IP、更新时间、近 8 个连续小时的温度与天气图标，以及未来 7 天的星期、日期、高低温和降水概率。行情页访问腾讯免 Key 行情接口 `qt.gtimg.cn` 获取比亚迪 `sz002594`。ESP8266 只支持 2.4GHz Wi-Fi。Wi-Fi 凭据写在本地 `secrets.h`（该文件被 Git 忽略，不会提交）。上电、短按 `FLASH` 或切换页面时更新当前页，默认每小时自动更新一次。
+
+网页坐标预览位于 `weather-preview/index.html`；可直接打开，联网时显示深圳实时天气，接口不可用时显示明确标记的示例数据。通过本地 HTTP 服务打开时，浏览器对实时接口和图标图层的兼容性更稳定。
+
+CoreGraphics 输出的中文位图内存行与墨水屏的上到下行序相反，因此字体生成器会把 16 行上下倒序后再写入 `weather_font.h`。横向列、ASCII 和 A0 行写入器都保持原方向，不能用整屏或单字左右翻转来修正中文。修改字体生成器或 `setPixel` 时应同时运行 `python3 tools/test_text_raster.py`。
