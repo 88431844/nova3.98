@@ -1,0 +1,75 @@
+:root {
+  color-scheme: light;
+  --page: #ecebe6;
+  --frame: #252525;
+  --status: #4d4b45;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: var(--page);
+  font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+
+.preview-shell {
+  width: min(100%, 960px);
+}
+
+.panel-frame {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 768 / 552;
+  overflow: hidden;
+  background: var(--frame);
+  box-shadow: 0 16px 40px rgb(0 0 0 / 16%);
+}
+
+#weather-panel,
+.icon-overlay {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+#weather-panel {
+  image-rendering: pixelated;
+}
+
+.icon-overlay {
+  pointer-events: none;
+}
+
+#data-status {
+  min-height: 20px;
+  margin: 10px 2px 0;
+  color: var(--status);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+  letter-spacing: 0;
+}
+
+@media (max-width: 520px) {
+  body {
+    padding: 8px;
+  }
+
+  #data-status {
+    margin-top: 7px;
+    font-size: 12px;
+  }
+}
