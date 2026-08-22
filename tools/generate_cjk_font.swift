@@ -3,7 +3,7 @@ import CoreText
 import Foundation
 
 let output = CommandLine.arguments[1]
-let characters = Array("深圳天气今明后温度湿体感晴多云阴小雨中雷雪雾最高低降概率日出落更新失败当前星期一二三四五六七").map(String.init)
+let characters = Array("深圳天气今明后大温度湿体感晴多云阴小雨中雷雪雾最高低降水概率日出落更新失败当前星期一二三四五六七近小时周").map(String.init)
 let fontName = "Hiragino Sans GB W3" as CFString
 let font = CTFontCreateWithName(fontName, 15, nil)
 let colorSpace = CGColorSpaceCreateDeviceGray()
@@ -37,8 +37,10 @@ for character in characters {
 
   var packed = [UInt8](repeating: 0, count: 32)
   for y in 0..<16 {
+    let sourceY = 15 - y
     for x in 0..<16 {
-      if pixels[y * 16 + x] < 160 {
+      if pixels[sourceY * 16 + x] < 160 {
+        // Horizontal bit order: bit 7 is display column 0.
         packed[y * 2 + x / 8] |= UInt8(1 << (7 - (x & 7)))
       }
     }
@@ -47,6 +49,8 @@ for character in characters {
 }
 
 var text = "// Generated 16x16 CJK glyphs for the Shenzhen weather dashboard.\n"
+text += "// Horizontal bit order: bit 7 is display column 0.\n"
+text += "// Vertical row order: row 0 is the top display row.\n"
 text += "#pragma once\n#include <Arduino.h>\n\n"
 text += "struct WeatherGlyph { uint32_t codepoint; uint8_t bitmap[32]; };\n"
 text += "const WeatherGlyph kWeatherFont[] PROGMEM = {\n"
