@@ -42,13 +42,18 @@ constexpr bool kMirrorWeather = false;
 
 constexpr uint16_t kChartLeft = 316;
 constexpr uint16_t kChartRight = 752;
-constexpr uint16_t kChartTop = 76;
+constexpr uint16_t kChartTop = 52;
 constexpr uint16_t kChartBottom = 310;
 constexpr uint16_t kChartPlotLeft = 340;
 constexpr uint16_t kChartPlotRight = 730;
-constexpr int16_t kChartPlotTop = 126;
-constexpr int16_t kChartPlotBottom = 266;
-constexpr int16_t kChartTimeY = 282;
+constexpr int16_t kChartTemperatureY = 94;
+constexpr int16_t kChartIconY = 120;
+constexpr int16_t kChartPlotTop = 158;
+constexpr int16_t kChartPlotBottom = 247;
+constexpr int16_t kChartTimeYEven = 264;
+constexpr int16_t kChartTimeYOdd = 288;
+static_assert(16 + (kForecastDays * 736) / kForecastDays == 752,
+              "Forecast strip must align with the main frame");
 
 enum Color : uint8_t { BLACK = 0, WHITE = 1, YELLOW = 2, RED = 3 };
 
@@ -708,6 +713,75 @@ void drawAsciiRow(uint16_t row, uint16_t x, uint16_t y, uint8_t scale,
   }
 }
 
+uint16_t asciiTextWidth(const char* text, uint8_t scale) {
+  return strlen(text) * 6 * scale;
+}
+
+uint16_t cjkTextWidth(const char* text, uint8_t scale) {
+  uint16_t width = 0;
+  const char* p = text;
+  while (*p) {
+    const uint32_t codepoint = nextUtf8(p);
+    width += (codepoint < 128 ? 8 : 17) * scale;
+  }
+  return width > 0 ? width - scale : 0;
+}
+
+void drawAsciiCenteredRow(uint16_t row, uint16_t center, uint16_t y,
+                          uint8_t scale, const char* text, Color color) {
+  const uint16_t width = asciiTextWidth(text, scale);
+  drawAsciiRow(row, center > width / 2 ? center - width / 2 : 0, y, scale,
+               text, color);
+}
+
+void drawAsciiRightAlignedRow(uint16_t row, uint16_t right, uint16_t y,
+                              uint8_t scale, const char* text, Color color) {
+  const uint16_t width = asciiTextWidth(text, scale);
+  drawAsciiRow(row, right > width ? right - width : 0, y, scale, text, color);
+}
+
+void drawCjkCenteredRow(uint16_t row, uint16_t center, uint16_t y,
+                        uint8_t scale, const char* text, Color color) {
+  const uint16_t width = cjkTextWidth(text, scale);
+  drawCjkRow(row, center > width / 2 ? center - width / 2 : 0, y, scale,
+             text, color);
+}
+
+void drawDegreeRow(uint16_t row, uint16_t x, uint16_t y, uint8_t scale,
+                   Color color) {
+  const uint8_t radius = max<uint8_t>(1, scale);
+  const int16_t centerY = y + radius;
+  if (row == centerY - radius || row == centerY + radius) {
+    for (int16_t dx = -radius; dx <= radius; ++dx) {
+      setPixel(x + radius + dx, color);
+    }
+  } else if (row > centerY - radius && row < centerY + radius) {
+    setPixel(x, color);
+    setPixel(x + radius * 2, color);
+  }
+}
+
+uint16_t temperatureTextWidth(float value, uint8_t scale) {
+  char number[8];
+  snprintf(number, sizeof(number), "%.0f", value);
+  return asciiTextWidth(number, scale) + 2 * scale + 1;
+}
+
+void drawTemperatureRow(uint16_t row, uint16_t x, uint16_t y, uint8_t scale,
+                        float value, Color color) {
+  char number[8];
+  snprintf(number, sizeof(number), "%.0f", value);
+  drawAsciiRow(row, x, y, scale, number, color);
+  drawDegreeRow(row, x + asciiTextWidth(number, scale), y, scale, color);
+}
+
+void drawTemperatureCenteredRow(uint16_t row, uint16_t center, uint16_t y,
+                                uint8_t scale, float value, Color color) {
+  const uint16_t width = temperatureTextWidth(value, scale);
+  drawTemperatureRow(row, center > width / 2 ? center - width / 2 : 0, y,
+                     scale, value, color);
+}
+
 const uint8_t* weatherIconForCode(int code, Color& color) {
   if (code == 0) {
     color = YELLOW;
@@ -730,7 +804,8 @@ const uint8_t* weatherIconForCode(int code, Color& color) {
     return kWeatherIconStorm;
   }
   color = RED;
-  return kWeatherIconRain;
+  return code == 82 || (code >= 65 && code <= 67) ? kWeatherIconHeavyRain
+                                                   : kWeatherIconRain;
 }
 
 void drawIconRow(uint16_t row, uint16_t left, uint16_t top, int code) {
@@ -745,6 +820,20 @@ void drawIconRow(uint16_t row, uint16_t left, uint16_t top, int code) {
   }
 }
 
+void drawIconScaledRow(uint16_t row, uint16_t left, uint16_t top,
+                       uint16_t width, uint16_t height, int code) {
+  if (row < top || row >= top + height) return;
+  Color color = BLACK;
+  const uint8_t* icon = weatherIconForCode(code, color);
+  const uint16_t sourceY = (row - top) * kWeatherIconHeight / height;
+  for (uint16_t x = 0; x < width; ++x) {
+    const uint16_t sourceX = x * kWeatherIconWidth / width;
+    const uint8_t packed = pgm_read_byte(
+        icon + sourceY * kWeatherIconBytesPerRow + sourceX / 8);
+    if (packed & (0x80 >> (sourceX & 7))) setPixel(left + x, color);
+  }
+}
+
 int16_t hourlyChartY(float temperature, float minimum, float maximum) {
   if (maximum - minimum < 0.1f) {
     return (kChartPlotTop + kChartPlotBottom) / 2;
@@ -756,14 +845,24 @@ int16_t hourlyChartY(float temperature, float minimum, float maximum) {
 
 void drawHourlyPointLabelRow(uint16_t row, uint8_t i, uint16_t x,
                              int16_t y) {
-  char temperatureLabel[12];
-  snprintf(temperatureLabel, sizeof(temperatureLabel), "%.1fC",
-           gWeather.hourlyTemperature[i]);
-  const uint16_t temperatureX = x - 15;
-  const int16_t temperatureY = max<int16_t>(kChartPlotTop - 12, y - 12);
-  drawAsciiRow(row, temperatureX, temperatureY, 1, temperatureLabel, BLACK);
-  const uint16_t timeX = x - 15;
-  drawAsciiRow(row, timeX, kChartTimeY, 1, gWeather.hourlyTime[i], BLACK);
+  drawTemperatureCenteredRow(row, x, kChartTemperatureY, 2,
+                             gWeather.hourlyTemperature[i], BLACK);
+  drawIconScaledRow(row, x - 14, kChartIconY, 28, 28,
+                    gWeather.hourlyCodes[i]);
+
+  const int16_t guideTop = kChartIconY + 31;
+  const int16_t guideBottom = y - 7;
+  if (row >= guideTop && row <= guideBottom &&
+      (row - guideTop) % 4 < 2) {
+    setPixel(x, BLACK);
+  }
+
+  const int16_t timeY = i % 2 == 0 ? kChartTimeYEven : kChartTimeYOdd;
+  const uint16_t timeWidth = asciiTextWidth(gWeather.hourlyTime[i], 2);
+  int16_t timeX = static_cast<int16_t>(x) - timeWidth / 2;
+  timeX = max<int16_t>(kChartLeft + 2, timeX);
+  timeX = min<int16_t>(kChartRight - timeWidth - 2, timeX);
+  drawAsciiRow(row, timeX, timeY, 2, gWeather.hourlyTime[i], BLACK);
 
   if (row == y) {
     setPixel(x - 2, YELLOW);
@@ -785,7 +884,9 @@ uint16_t hourlyChartX(uint8_t index, uint8_t count) {
 
 void drawHourlyChartRow(uint16_t row) {
   drawRectRow(row, kChartTop, kChartBottom, kChartLeft, kChartRight, BLACK);
-  drawAsciiRow(row, 336, 96, 2, "12H TEMP", BLACK);
+  drawCjkRow(row, 336, 56, 2, "近", BLACK);
+  drawAsciiRow(row, 370, 56, 2, "8", BLACK);
+  drawCjkRow(row, 384, 56, 2, "小时天气", BLACK);
   if (gWeather.hourlyCount == 0) return;
 
   float minimum = gWeather.hourlyTemperature[0];
@@ -817,51 +918,53 @@ void drawWeatherRow(uint16_t row) {
   if (row < 6) {
     for (uint16_t x = 0; x < kPanelWidth; ++x) setPixel(x, RED);
   }
-  drawCjkRow(row, 22, 18, 2, "深圳天气", BLACK);
-  drawAsciiRow(row, 174, 21, 2, gIpText, BLACK);
-  drawCjkRow(row, 398, 20, 1, "更新", BLACK);
-  drawAsciiRow(row, 438, 21, 2, gWeather.updated, BLACK);
-  drawAsciiRow(row, 620, 21, 2, gWeather.currentDate, BLACK);
-  drawRectRow(row, 76, 310, 16, 752, BLACK);
-  drawIconRow(row, 30, 102, gWeather.currentCode);
-  char current[12];
-  snprintf(current, sizeof(current), "%.0fC", gWeather.temperature);
-  drawAsciiRow(row, 145, 106, 4, current, BLACK);
-  drawCjkRow(row, 145, 164, 2, weatherText(gWeather.currentCode), BLACK);
-  if (row == 226) {
+  drawAsciiRow(row, 22, 21, 2, gIpText, BLACK);
+  drawAsciiCenteredRow(row, kPanelWidth / 2, 21, 2, gWeather.currentDate,
+                       BLACK);
+  drawCjkRow(row, 640, 20, 1, "更新", BLACK);
+  drawAsciiRightAlignedRow(row, 746, 21, 2, gWeather.updated, BLACK);
+  drawRectRow(row, 52, 310, 16, 752, BLACK);
+  drawIconScaledRow(row, 36, 80, 84, 84, gWeather.currentCode);
+  drawTemperatureRow(row, 145, 78, 4, gWeather.temperature, BLACK);
+  drawCjkRow(row, 145, 142, 2, weatherText(gWeather.currentCode), BLACK);
+  if (row == 210) {
     for (uint16_t x = 28; x <= 304; ++x) setPixel(x, BLACK);
   }
-  char details[24];
-  snprintf(details, sizeof(details), "%.0fC", gWeather.apparent);
-  drawCjkRow(row, 34, 248, 1, "体感", BLACK);
-  drawAsciiRow(row, 98, 250, 2, details, BLACK);
+  drawCjkRow(row, 28, 258, 2, "体感", BLACK);
+  drawTemperatureRow(row, 98, 266, 2, gWeather.apparent, BLACK);
   char humidity[12];
   snprintf(humidity, sizeof(humidity), "%d%%", gWeather.humidity);
-  drawCjkRow(row, 170, 248, 1, "湿度", BLACK);
-  drawAsciiRow(row, 234, 250, 2, humidity, BLACK);
+  drawCjkRow(row, 158, 258, 2, "湿度", BLACK);
+  drawAsciiRow(row, 234, 266, 2, humidity, BLACK);
   drawHourlyChartRow(row);
 
-  for (uint8_t day = 0; day < 3; ++day) {
-    const uint16_t left = 16 + day * 248;
-    drawRectRow(row, 318, 540, left, left + 232, BLACK);
-    const char* label =
-        day == 0 ? "明天" : (day == 1 ? "后天" : "大后天");
-    const char* condition = weatherText(gWeather.codes[day]);
-    drawCjkRow(row, left + 16, 328, 2, label, BLACK);
-    drawCjkRow(row, left + 16, 366, 1, condition, BLACK);
-    drawAsciiRow(row, left + 86, 366, 2, gWeather.dates[day] + 5, BLACK);
-    drawIconRow(row, left + 64, 390, gWeather.codes[day]);
-    char high[8];
-    char low[8];
-    snprintf(high, sizeof(high), "%.0fC", gWeather.high[day]);
-    snprintf(low, sizeof(low), "%.0fC", gWeather.low[day]);
-    drawAsciiRow(row, left + 18, 474, 2, high, BLACK);
-    drawAsciiRow(row, left + 78, 474, 2, "/", BLACK);
-    drawAsciiRow(row, left + 120, 474, 2, low, BLACK);
+  for (uint8_t day = 0; day < kForecastDays; ++day) {
+    const uint16_t left = 16 + (day * 736) / kForecastDays;
+    const uint16_t right = 16 + ((day + 1) * 736) / kForecastDays;
+    const uint16_t center = (left + right) / 2;
+    drawRectRow(row, 318, 540, left, right, BLACK);
+    drawCjkCenteredRow(row, center, 326, 2,
+                       weekdayLabel(gWeather.dates[day]), BLACK);
+    drawAsciiCenteredRow(row, center, 362, 2, gWeather.dates[day] + 5,
+                         BLACK);
+    const uint16_t iconLeft = center - 32;
+    drawIconScaledRow(row, iconLeft, 390, 64, 64, gWeather.codes[day]);
+
+    const uint16_t highWidth = temperatureTextWidth(gWeather.high[day], 2);
+    const uint16_t lowWidth = temperatureTextWidth(gWeather.low[day], 2);
+    const uint16_t slashWidth = asciiTextWidth("/", 2);
+    const uint16_t temperaturesWidth = highWidth + slashWidth + lowWidth + 8;
+    uint16_t temperatureX = center - temperaturesWidth / 2;
+    drawTemperatureRow(row, temperatureX, 472, 2, gWeather.high[day], BLACK);
+    temperatureX += highWidth + 4;
+    drawAsciiRow(row, temperatureX, 472, 2, "/", BLACK);
+    temperatureX += slashWidth + 4;
+    drawTemperatureRow(row, temperatureX, 472, 2, gWeather.low[day], BLACK);
+
     char rain[12];
     snprintf(rain, sizeof(rain), "%d%%", gWeather.rain[day]);
-    drawCjkRow(row, left + 18, 510, 1, "降水", BLACK);
-    drawAsciiRow(row, left + 88, 512, 2, rain, BLACK);
+    drawCjkCenteredRow(row, center, 508, 1, "降水", BLACK);
+    drawAsciiCenteredRow(row, center, 524, 2, rain, BLACK);
   }
 }
 
