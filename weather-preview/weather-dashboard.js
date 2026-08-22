@@ -188,8 +188,7 @@ function renderDashboard(data) {
     ctx.arc(point.x, point.y, 5, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
-    const timeX = Math.min(690, Math.max(318, point.x - 30));
-    mono(point.time, timeX, index % 2 === 0 ? 264 : 288, 16, 900);
+    mono(point.time.slice(0, 2), point.x, 282, 16, 900, COLORS.ink, "center");
   });
 
   data.daily.slice(0, FORECAST_DAYS).forEach((day, index) => {

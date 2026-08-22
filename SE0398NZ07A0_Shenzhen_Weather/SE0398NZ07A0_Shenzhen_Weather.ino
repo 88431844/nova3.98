@@ -50,8 +50,7 @@ constexpr int16_t kChartTemperatureY = 94;
 constexpr int16_t kChartIconY = 120;
 constexpr int16_t kChartPlotTop = 158;
 constexpr int16_t kChartPlotBottom = 247;
-constexpr int16_t kChartTimeYEven = 264;
-constexpr int16_t kChartTimeYOdd = 288;
+constexpr int16_t kChartTimeY = 282;
 static_assert(16 + (kForecastDays * 736) / kForecastDays == 752,
               "Forecast strip must align with the main frame");
 
@@ -857,12 +856,8 @@ void drawHourlyPointLabelRow(uint16_t row, uint8_t i, uint16_t x,
     setPixel(x, BLACK);
   }
 
-  const int16_t timeY = i % 2 == 0 ? kChartTimeYEven : kChartTimeYOdd;
-  const uint16_t timeWidth = asciiTextWidth(gWeather.hourlyTime[i], 2);
-  int16_t timeX = static_cast<int16_t>(x) - timeWidth / 2;
-  timeX = max<int16_t>(kChartLeft + 2, timeX);
-  timeX = min<int16_t>(kChartRight - timeWidth - 2, timeX);
-  drawAsciiRow(row, timeX, timeY, 2, gWeather.hourlyTime[i], BLACK);
+  char hour[3] = {gWeather.hourlyTime[i][0], gWeather.hourlyTime[i][1], 0};
+  drawAsciiCenteredRow(row, x, kChartTimeY, 2, hour, BLACK);
 
   if (row == y) {
     setPixel(x - 2, YELLOW);

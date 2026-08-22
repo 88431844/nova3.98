@@ -37,6 +37,8 @@ def test_preview_matches_approved_labels_and_counts() -> None:
     assert "FORECAST_DAYS = 7" in JS
     assert "°" in JS
     assert "`降水 ${Math.round(day.rain)}%`" in JS
+    assert 'mono(point.time.slice(0, 2), point.x, 282, 16, 900, COLORS.ink, "center")' in JS
+    assert "index % 2 === 0 ? 264 : 288" not in JS
 
 
 if __name__ == "__main__":

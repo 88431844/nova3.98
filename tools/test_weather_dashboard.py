@@ -84,8 +84,7 @@ def test_approved_header_chart_and_forecast_geometry() -> None:
     assert "constexpr uint16_t kChartTop = 52;" in text
     assert "constexpr int16_t kChartTemperatureY = 94;" in text
     assert "constexpr int16_t kChartIconY = 120;" in text
-    assert "constexpr int16_t kChartTimeYEven = 264;" in text
-    assert "constexpr int16_t kChartTimeYOdd = 288;" in text
+    assert "constexpr int16_t kChartTimeY = 282;" in text
     assert 'drawCjkRow(row, 336, 56, 2, "近", BLACK);' in text
     assert 'drawAsciiRow(row, 370, 56, 2, "8", BLACK);' in text
     assert 'drawCjkRow(row, 384, 56, 2, "小时天气", BLACK);' in text
@@ -130,7 +129,10 @@ def test_hourly_chart_labels_every_point() -> None:
     assert "constexpr uint8_t kHourlyPoints = 8;" in text
     assert "drawTemperatureRow" in text
     assert "drawIconScaledRow(row, x - 14, kChartIconY, 28, 28" in text
-    assert "i % 2 == 0 ? kChartTimeYEven : kChartTimeYOdd" in text
+    assert "char hour[3] = {" in text
+    assert "drawAsciiCenteredRow(row, x, kChartTimeY, 2, hour, BLACK);" in text
+    assert "kChartTimeYEven" not in text
+    assert "kChartTimeYOdd" not in text
     assert "setPixel(x - 2, YELLOW)" in text
     assert "setPixel(x + 2, YELLOW)" in text
 
